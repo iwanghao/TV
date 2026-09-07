@@ -46,10 +46,20 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(localProps['storeFile'])
-            keyAlias localProps['keyAlias']
-            keyPassword localProps['storePassword']
-            storePassword localProps['storePassword']
+            if (localProps['storeFile'] != null && localProps['keyAlias'] != null && localProps['storePassword'] != null) {
+                storeFile file(localProps['storeFile'])
+                keyAlias localProps['keyAlias']
+                keyPassword localProps['storePassword']
+                storePassword localProps['storePassword']
+            } else {
+                // 本地未配置签名时回退到 debug 签名，保证 release 变体可构建。
+                // AbiApkPackaging 的 FinalizeApksTask 会直接读取本配置执行 zipalign + apksigner，
+                // 属性留空会导致任务校验失败（Value not set）。
+                storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+                storePassword 'android'
+            }
         }
     }
 
@@ -86,6 +96,9 @@ android {
 AbiApkPackaging.configure(project, SingleArtifact.APK.INSTANCE)
 
 dependencies {
+    // 定制版 media3 以 AAR 形式接入：源码位于 D:\StudioProjects\media-fongmi（分支 fongmi-1.11.0），
+    // 构建产物 libraries/*/buildout/outputs/lib-*-release.aar 重命名为 media3-*.aar 后放入 app/libs，
+    // 由下面的 fileTree 自动引入，无需在版本目录中声明。
     implementation fileTree(dir: "libs", include: ["*.aar"])
     implementation project(':catvod')
     implementation project(':chaquo')
