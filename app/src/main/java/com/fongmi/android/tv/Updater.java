@@ -1,5 +1,6 @@
 package com.fongmi.android.tv;
 
+import android.os.Build;
 import android.text.TextUtils;
 import android.view.View;
 
@@ -26,6 +27,7 @@ public class Updater implements Download.Callback, UpdateListener {
 
     private Download download;
     private UpdateDialog dialog;
+    private int code;
 
     public static Updater create() {
         return new Updater();
@@ -39,40 +41,52 @@ public class Updater implements Download.Callback, UpdateListener {
         return RemoteConfig.URL;
     }
 
+    private String getAbi() {
+        return android.os.Process.is64Bit() ? "arm64_v8a" : "armeabi_v7a";
+    }
+
     private String getApk(JSONObject object) {
-        String name = BuildConfig.FLAVOR + "-" + (android.os.Process.is64Bit() ? "arm64_v8a" : "armeabi_v7a");
-        String url = object.optString(name);
+        String url = "";
+        for (String abi : Build.SUPPORTED_ABIS) {
+            url = object.optString(BuildConfig.FLAVOR + "-" + abi.replace('-', '_'));
+            if (!TextUtils.isEmpty(url)) break;
+        }
         if (TextUtils.isEmpty(url)) url = object.optString(BuildConfig.FLAVOR);
         if (TextUtils.isEmpty(url)) url = object.optString("uri");
-        return TextUtils.isEmpty(url) ? Github.getApk(name) : url;
+        return TextUtils.isEmpty(url) ? Github.getApk(BuildConfig.FLAVOR + "-" + getAbi()) : url;
     }
 
     public Updater force() {
         Notify.show(R.string.update_check);
-        Setting.putUpdate(true);
         return this;
     }
 
     public void start(FragmentActivity activity) {
-        if (!Setting.getUpdate()) return;
-        Task.execute(() -> doInBackground(activity));
+        start(activity, false);
     }
 
-    private void doInBackground(FragmentActivity activity) {
+    public void start(FragmentActivity activity, boolean force) {
+        Task.execute(() -> doInBackground(activity, force));
+    }
+
+    private void doInBackground(FragmentActivity activity, boolean force) {
         try {
             JSONObject object = new JSONObject(OkHttp.string(getJson()));
             String name = object.optString("name");
             String desc = object.optString("desc");
             int code = object.optInt("code");
             if (code <= BuildConfig.VERSION_CODE) return;
-            App.post(() -> show(activity, name, desc, getApk(object)));
+            if (!force && code == Setting.getUpdateSkip()) return;
+            App.post(() -> show(activity, code, name, desc, getApk(object)));
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void show(FragmentActivity activity, String version, String desc, String apk) {
+    private void show(FragmentActivity activity, int code, String version, String desc, String apk) {
+        if (activity.isFinishing() || activity.isDestroyed()) return;
         dismiss();
+        this.code = code;
         download = Download.create(apk, getFile());
         dialog = UpdateDialog.create().title(ResUtil.getString(R.string.update_version, version)).desc(desc).listener(this).show(activity);
     }
@@ -85,7 +99,7 @@ public class Updater implements Download.Callback, UpdateListener {
 
     @Override
     public void onCancel(View view) {
-        Setting.putUpdate(false);
+        Setting.putUpdateSkip(code);
         download.cancel();
         dismiss();
     }

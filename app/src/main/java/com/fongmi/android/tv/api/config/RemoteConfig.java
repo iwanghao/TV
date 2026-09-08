@@ -22,7 +22,7 @@ public class RemoteConfig {
     }
 
     private static boolean isEmpty() {
-        return Config.vod().isEmpty() && Config.live().isEmpty() && Config.wall().isEmpty();
+        return Config.vod().isEmpty();
     }
 
     private static boolean assign() {
