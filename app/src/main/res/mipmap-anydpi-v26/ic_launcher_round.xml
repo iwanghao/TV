@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_photo" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <!-- 直接用 #FFFFFF 写死背景色，不需要额外定义资源 -->
+    <background android:drawable="@color/ic_launcher_background" />
+    <!-- 引用上一步做好的底部对齐前景 -->
+    <foreground android:drawable="@drawable/photo_foreground" />
 </adaptive-icon>
