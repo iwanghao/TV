@@ -14,7 +14,7 @@ public class PreloadSetting {
     public static final int STEP_TIME_SECONDS = 10;
 
     public static boolean isEnabled() {
-        return Prefers.getBoolean("preload");
+        return Prefers.getBoolean("preload", true);
     }
 
     public static void putEnabled(boolean preload) {
@@ -22,7 +22,7 @@ public class PreloadSetting {
     }
 
     public static boolean isNextEpisodeEnabled() {
-        return Prefers.getBoolean("preload_next_episode");
+        return Prefers.getBoolean("preload_next_episode", true);
     }
 
     public static void putNextEpisodeEnabled(boolean enabled) {
@@ -30,7 +30,7 @@ public class PreloadSetting {
     }
 
     public static int getThreads() {
-        return Math.clamp(Prefers.getInt("preload_threads", MIN_THREADS), MIN_THREADS, MAX_THREADS);
+        return Math.clamp(Prefers.getInt("preload_threads", 4), MIN_THREADS, MAX_THREADS);
     }
 
     public static void putThreads(int threads) {
@@ -38,7 +38,7 @@ public class PreloadSetting {
     }
 
     public static int getSizeMb() {
-        int size = Math.clamp(Prefers.getInt("preload_size", MIN_SIZE_MB), MIN_SIZE_MB, MAX_SIZE_MB);
+        int size = Math.clamp(Prefers.getInt("preload_size", 1024), MIN_SIZE_MB, MAX_SIZE_MB);
         return Math.clamp(MIN_SIZE_MB + (long) Math.round((float) (size - MIN_SIZE_MB) / STEP_SIZE_MB) * STEP_SIZE_MB, MIN_SIZE_MB, MAX_SIZE_MB);
     }
 

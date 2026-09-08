@@ -113,14 +113,6 @@ public class Setting {
         Prefers.put("incognito", incognito);
     }
 
-    public static int getUpdateSkip() {
-        return Prefers.getInt("update_skip", 0);
-    }
-
-    public static void putUpdateSkip(int code) {
-        Prefers.put("update_skip", code);
-    }
-
     public static boolean isAdblock() {
         return Prefers.getBoolean("adblock", true);
     }

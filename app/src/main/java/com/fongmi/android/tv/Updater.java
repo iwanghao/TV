@@ -8,7 +8,6 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.fongmi.android.tv.api.config.RemoteConfig;
 import com.fongmi.android.tv.impl.UpdateListener;
-import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.dialog.UpdateDialog;
 import com.fongmi.android.tv.utils.Download;
 import com.fongmi.android.tv.utils.FileUtil;
@@ -27,7 +26,7 @@ public class Updater implements Download.Callback, UpdateListener {
 
     private Download download;
     private UpdateDialog dialog;
-    private int code;
+    private boolean forced;
 
     public static Updater create() {
         return new Updater();
@@ -57,36 +56,34 @@ public class Updater implements Download.Callback, UpdateListener {
     }
 
     public Updater force() {
+        forced = true;
         Notify.show(R.string.update_check);
         return this;
     }
 
     public void start(FragmentActivity activity) {
-        start(activity, false);
+        Task.execute(() -> doInBackground(activity));
     }
 
-    public void start(FragmentActivity activity, boolean force) {
-        Task.execute(() -> doInBackground(activity, force));
-    }
-
-    private void doInBackground(FragmentActivity activity, boolean force) {
+    private void doInBackground(FragmentActivity activity) {
         try {
             JSONObject object = new JSONObject(OkHttp.string(getJson()));
             String name = object.optString("name");
             String desc = object.optString("desc");
             int code = object.optInt("code");
-            if (code <= BuildConfig.VERSION_CODE) return;
-            if (!force && code == Setting.getUpdateSkip()) return;
-            App.post(() -> show(activity, code, name, desc, getApk(object)));
+            if (code <= BuildConfig.VERSION_CODE) {
+                if (forced) Notify.show(R.string.update_latest);
+                return;
+            }
+            App.post(() -> show(activity, name, desc, getApk(object)));
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void show(FragmentActivity activity, int code, String version, String desc, String apk) {
+    private void show(FragmentActivity activity, String version, String desc, String apk) {
         if (activity.isFinishing() || activity.isDestroyed()) return;
         dismiss();
-        this.code = code;
         download = Download.create(apk, getFile());
         dialog = UpdateDialog.create().title(ResUtil.getString(R.string.update_version, version)).desc(desc).listener(this).show(activity);
     }
@@ -99,7 +96,6 @@ public class Updater implements Download.Callback, UpdateListener {
 
     @Override
     public void onCancel(View view) {
-        Setting.putUpdateSkip(code);
         download.cancel();
         dismiss();
     }
