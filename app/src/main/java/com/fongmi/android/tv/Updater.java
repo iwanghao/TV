@@ -1,9 +1,11 @@
 package com.fongmi.android.tv;
 
+import android.text.TextUtils;
 import android.view.View;
 
 import androidx.fragment.app.FragmentActivity;
 
+import com.fongmi.android.tv.api.config.RemoteConfig;
 import com.fongmi.android.tv.impl.UpdateListener;
 import com.fongmi.android.tv.setting.Setting;
 import com.fongmi.android.tv.ui.dialog.UpdateDialog;
@@ -22,12 +24,8 @@ import java.io.File;
 
 public class Updater implements Download.Callback, UpdateListener {
 
-    private final Download download;
+    private Download download;
     private UpdateDialog dialog;
-
-    private Updater() {
-        this.download = Download.create(getApk(), getFile());
-    }
 
     public static Updater create() {
         return new Updater();
@@ -38,11 +36,15 @@ public class Updater implements Download.Callback, UpdateListener {
     }
 
     private String getJson() {
-        return Github.getJson(BuildConfig.FLAVOR);
+        return RemoteConfig.URL;
     }
 
-    private String getApk() {
-        return Github.getApk(BuildConfig.FLAVOR + "-" + (android.os.Process.is64Bit() ? "arm64_v8a" : "armeabi_v7a"));
+    private String getApk(JSONObject object) {
+        String name = BuildConfig.FLAVOR + "-" + (android.os.Process.is64Bit() ? "arm64_v8a" : "armeabi_v7a");
+        String url = object.optString(name);
+        if (TextUtils.isEmpty(url)) url = object.optString(BuildConfig.FLAVOR);
+        if (TextUtils.isEmpty(url)) url = object.optString("uri");
+        return TextUtils.isEmpty(url) ? Github.getApk(name) : url;
     }
 
     public Updater force() {
@@ -63,14 +65,15 @@ public class Updater implements Download.Callback, UpdateListener {
             String desc = object.optString("desc");
             int code = object.optInt("code");
             if (code <= BuildConfig.VERSION_CODE) return;
-            App.post(() -> show(activity, name, desc));
+            App.post(() -> show(activity, name, desc, getApk(object)));
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void show(FragmentActivity activity, String version, String desc) {
+    private void show(FragmentActivity activity, String version, String desc, String apk) {
         dismiss();
+        download = Download.create(apk, getFile());
         dialog = UpdateDialog.create().title(ResUtil.getString(R.string.update_version, version)).desc(desc).listener(this).show(activity);
     }
 

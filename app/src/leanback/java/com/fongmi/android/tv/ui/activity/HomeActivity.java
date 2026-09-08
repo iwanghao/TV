@@ -26,8 +26,8 @@ import com.fongmi.android.tv.Product;
 import com.fongmi.android.tv.R;
 import com.fongmi.android.tv.Updater;
 import com.fongmi.android.tv.api.config.LiveConfig;
+import com.fongmi.android.tv.api.config.RemoteConfig;
 import com.fongmi.android.tv.api.config.VodConfig;
-import com.fongmi.android.tv.api.config.WallConfig;
 import com.fongmi.android.tv.bean.Cache;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Func;
@@ -198,9 +198,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
     }
 
     private void initConfig() {
-        VodConfig.get().init().load(getCallback());
-        LiveConfig.get().init().load();
-        WallConfig.get().init();
+        RemoteConfig.init(getCallback());
     }
 
     private Callback getCallback() {
