@@ -56,9 +56,6 @@
     <!-- Download -->
     <string name="download">Download</string>
     <string name="download_title">Download episodes</string>
-    <string name="download_channel">Downloads</string>
-    <string name="download_notify_title">Downloading offline cache</string>
-    <string name="download_notify_preparing">Preparing…</string>
     <string name="download_none">Nothing downloaded yet.</string>
     <string name="download_play">Play</string>
     <string name="download_delete_title">Remove download</string>

@@ -24,6 +24,11 @@
     <string name="keep_add">Added</string>
     <string name="keep_del">Removed</string>
 
+    <!-- Download -->
+    <string name="download_channel">Downloads</string>
+    <string name="download_notify_title">Downloading offline cache</string>
+    <string name="download_notify_preparing">Preparing…</string>
+
     <!-- Play -->
     <string name="play">Play</string>
     <string name="pause">Pause</string>

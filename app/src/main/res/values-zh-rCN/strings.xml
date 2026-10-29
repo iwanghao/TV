@@ -24,6 +24,11 @@
     <string name="keep_add">已加入收藏</string>
     <string name="keep_del">已取消收藏</string>
 
+    <!-- Download -->
+    <string name="download_channel">下载</string>
+    <string name="download_notify_title">正在下载离线缓存</string>
+    <string name="download_notify_preparing">准备中…</string>
+
     <!-- Play -->
     <string name="play">播放</string>
     <string name="pause">暂停</string>

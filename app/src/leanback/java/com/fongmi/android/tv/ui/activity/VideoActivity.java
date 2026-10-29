@@ -432,6 +432,26 @@ public class VideoActivity extends PlaybackActivity implements VodPlaybackHost, 
     }
 
     @Override
+    public int getCid() {
+        return VodConfig.getCid();
+    }
+
+    @Override
+    public String getLocalFile() {
+        return "";
+    }
+
+    @Override
+    public String getEpisodeName() {
+        return "";
+    }
+
+    @Override
+    public String getEpisodeUrl() {
+        return "";
+    }
+
+    @Override
     public boolean isSiteChangeable() {
         return getSite().isChangeable();
     }
