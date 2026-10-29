@@ -53,6 +53,39 @@
     <!-- Hint -->
     <string name="shortcut">Shortcut has been added.</string>
 
+    <!-- Download -->
+    <string name="download">Download</string>
+    <string name="download_title">Download episodes</string>
+    <string name="download_channel">Downloads</string>
+    <string name="download_notify_title">Downloading offline cache</string>
+    <string name="download_notify_preparing">Preparing…</string>
+    <string name="download_none">Nothing downloaded yet.</string>
+    <string name="download_play">Play</string>
+    <string name="download_delete_title">Remove download</string>
+    <string name="download_delete_message">Remove the offline copy of <xliff:g name="name">%s</xliff:g>?</string>
+    <string name="download_offline_missing">This episode has not been downloaded, so it cannot play offline.</string>
+    <string name="download_cache_lost">Offline copy of <xliff:g name="name">%s</xliff:g> is gone, please download it again.</string>
+    <string name="download_failed">Download failed</string>
+    <string name="download_live">Live streams cannot be downloaded.</string>
+
+    <!-- Download status (方块下方状态文字) -->
+    <string name="download_state_none">Not downloaded</string>
+    <string name="download_state_queued">Queued</string>
+    <string name="download_state_running">Downloading</string>
+    <string name="download_state_running_percent">Downloading %1$d%%</string>
+    <string name="download_state_done">Downloaded</string>
+    <string name="download_state_failed">Failed</string>
+    <string name="download_state_paused">Paused</string>
+
+    <!-- Download list -->
+    <string name="download_list_empty">Nothing downloaded yet.</string>
+    <string name="download_episodes_count">%1$d episodes</string>
+    <string name="download_permission_denied">Storage permission is required to download.</string>
+    <string name="download_cancel">Cancel</string>
+    <string name="download_retry">Retry</string>
+    <string name="download_pause">Pause</string>
+    <string name="download_resume">Resume</string>
+
     <string-array name="select_background">
         <item>Off</item>
         <item>On</item>

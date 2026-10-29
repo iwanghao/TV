@@ -9,6 +9,7 @@ import androidx.room.RoomDatabase;
 import com.fongmi.android.tv.App;
 import com.fongmi.android.tv.bean.Config;
 import com.fongmi.android.tv.bean.Device;
+import com.fongmi.android.tv.bean.Download;
 import com.fongmi.android.tv.bean.History;
 import com.fongmi.android.tv.bean.Keep;
 import com.fongmi.android.tv.bean.Live;
@@ -16,16 +17,17 @@ import com.fongmi.android.tv.bean.Site;
 import com.fongmi.android.tv.bean.Track;
 import com.fongmi.android.tv.db.dao.ConfigDao;
 import com.fongmi.android.tv.db.dao.DeviceDao;
+import com.fongmi.android.tv.db.dao.DownloadDao;
 import com.fongmi.android.tv.db.dao.HistoryDao;
 import com.fongmi.android.tv.db.dao.KeepDao;
 import com.fongmi.android.tv.db.dao.LiveDao;
 import com.fongmi.android.tv.db.dao.SiteDao;
 import com.fongmi.android.tv.db.dao.TrackDao;
 
-@Database(entities = {Keep.class, Site.class, Live.class, Track.class, Config.class, Device.class, History.class}, version = AppDatabase.VERSION)
+@Database(entities = {Keep.class, Site.class, Live.class, Track.class, Config.class, Device.class, History.class, Download.class}, version = AppDatabase.VERSION)
 public abstract class AppDatabase extends RoomDatabase {
 
-    public static final int VERSION = 35;
+    public static final int VERSION = 39;
     public static final String NAME = "tv";
     public static final String SYMBOL = "@@@";
 
@@ -43,6 +45,10 @@ public abstract class AppDatabase extends RoomDatabase {
                 .addMigrations(Migrations.MIGRATION_32_33)
                 .addMigrations(Migrations.MIGRATION_33_34)
                 .addMigrations(Migrations.MIGRATION_34_35)
+                .addMigrations(Migrations.MIGRATION_35_36)
+                .addMigrations(Migrations.MIGRATION_36_37)
+                .addMigrations(Migrations.MIGRATION_37_38)
+                .addMigrations(Migrations.MIGRATION_38_39)
                 .fallbackToDestructiveMigration(true)
                 .allowMainThreadQueries().build();
     }
@@ -60,4 +66,6 @@ public abstract class AppDatabase extends RoomDatabase {
     public abstract DeviceDao getDeviceDao();
 
     public abstract HistoryDao getHistoryDao();
+
+    public abstract DownloadDao getDownloadDao();
 }

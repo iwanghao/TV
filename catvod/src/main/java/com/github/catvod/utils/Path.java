@@ -93,6 +93,19 @@ public class Path {
         return mkdir(new File(cache(), "exo"));
     }
 
+    public static File download() {
+        // 下载内容放 APP 专属外部目录（getExternalFilesDir），卸载 APP 时系统自动清理，且无需存储权限。
+        File dir = Init.context().getExternalFilesDir("download");
+        if (dir == null) dir = new File(files(), "download");
+        return mkdir(dir);
+    }
+
+    public static File download(String... names) {
+        File dir = download();
+        for (String name : names) dir = new File(dir, name);
+        return dir;
+    }
+
     public static File mpvCache() {
         return mkdir(new File(cache(), "mpv"));
     }

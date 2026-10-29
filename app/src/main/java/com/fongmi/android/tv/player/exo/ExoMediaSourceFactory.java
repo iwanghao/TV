@@ -8,6 +8,7 @@ import androidx.media3.datasource.DataSource;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.datasource.HttpDataSource;
 import androidx.media3.datasource.cache.Cache;
+import androidx.media3.datasource.cache.CacheDataSink;
 import androidx.media3.datasource.cache.CacheDataSource;
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor;
 import androidx.media3.datasource.cache.SimpleCache;
@@ -27,6 +28,7 @@ import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Path;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Map;
 
 public class ExoMediaSourceFactory implements MediaSource.Factory {
@@ -88,6 +90,26 @@ public class ExoMediaSourceFactory implements MediaSource.Factory {
         long availableBytes = Math.max(0, Path.available(dir));
         long storageBudget = (usedBytes + availableBytes) * CACHE_SPACE_PERCENT / 100;
         return Math.min(PreloadSetting.getSizeBytes(), storageBudget);
+    }
+
+    /**
+     * 离线缓存(DOWNLOAD)专用：复用同一个 SimpleCache，但允许写入缓存。
+     * 这样下载下来的数据与播放器缓存共用一份，播放时天然命中本地。
+     */
+    public static DataSource.Factory createDownloadDataSourceFactory(Map<String, String> headers) {
+        HttpDataSource.Factory httpFactory = new OkHttpDataSource.Factory(OkHttp.player());
+        httpFactory.setDefaultRequestProperties(headers == null ? new HashMap<>() : headers);
+        DataSource.Factory upstream = new DefaultDataSource.Factory(App.get(), httpFactory);
+        return () -> new CacheDataSource.Factory()
+                .setCache(getCache())
+                .setUpstreamDataSourceFactory(upstream)
+                .setCacheWriteDataSinkFactory(new CacheDataSink.Factory().setCache(getCache()))
+                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+                .createDataSource();
+    }
+
+    public static Cache getDownloadCache() {
+        return getCache();
     }
 
     @NonNull

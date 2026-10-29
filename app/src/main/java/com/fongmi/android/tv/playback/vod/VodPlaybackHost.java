@@ -20,9 +20,30 @@ public interface VodPlaybackHost {
 
     String getVodName();
 
+    /**
+     * 当前站点配置 id（cid），用于离线兜底时按 cid 查本地已下载记录。
+     */
+    int getCid();
+
+    /**
+     * 离线播放时返回本地文件绝对路径（非离线场景返回空字符串）。
+     * 非空时 VodPlaybackController 跳过联网详情加载，直接用本地文件播放。
+     */
+    String getLocalFile();
+
     String getVodPic();
 
     String getVodMark();
+
+    /**
+     * 离线播放时返回目标集数名（用于渲染离线详情页的集数），非离线场景可返回空。
+     */
+    String getEpisodeName();
+
+    /**
+     * 离线播放时返回目标集数的 url（用于构造离线详情页的 Episode）。
+     */
+    String getEpisodeUrl();
 
     String getHistoryKey();
 

@@ -228,6 +228,18 @@
                             android:visibility="gone"
                             tools:visibility="visible" />
 
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/download"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:padding="4dp"
+                            android:text="@string/download"
+                            android:textColor="@color/white"
+                            android:textSize="14sp"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+
                         <View
                             android:layout_width="0dp"
                             android:layout_height="0dp"

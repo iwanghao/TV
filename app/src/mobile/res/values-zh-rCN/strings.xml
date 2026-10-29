@@ -42,6 +42,39 @@
     <string name="dialog_delete_keep">收藏纪录将会全部删除。</string>
     <string name="dialog_delete_history">观看纪录将会全部删除。</string>
 
+    <!-- Download -->
+    <string name="download">下载</string>
+    <string name="download_title">下载剧集</string>
+    <string name="download_channel">下载</string>
+    <string name="download_notify_title">正在下载离线缓存</string>
+    <string name="download_notify_preparing">准备中…</string>
+    <string name="download_none">暂无已下载内容。</string>
+    <string name="download_play">播放</string>
+    <string name="download_delete_title">删除下载</string>
+    <string name="download_delete_message">删除 <xliff:g name="name">%s</xliff:g> 的离线缓存？</string>
+    <string name="download_offline_missing">该集尚未下载，无法离线播放。</string>
+    <string name="download_cache_lost"><xliff:g name="name">%s</xliff:g> 的离线缓存已失效，请重新下载。</string>
+    <string name="download_failed">下载失败</string>
+    <string name="download_live">直播流无法下载。</string>
+
+    <!-- Download status (方块下方状态文字) -->
+    <string name="download_state_none">未下载</string>
+    <string name="download_state_queued">等待中</string>
+    <string name="download_state_running">下载中</string>
+    <string name="download_state_running_percent">下载中 %1$d%%</string>
+    <string name="download_state_done">已下载</string>
+    <string name="download_state_failed">失败</string>
+    <string name="download_state_paused">暂停中</string>
+
+    <!-- Download list -->
+    <string name="download_list_empty">暂无下载内容。</string>
+    <string name="download_episodes_count">%1$d 集</string>
+    <string name="download_permission_denied">需要存储权限才能下载。</string>
+    <string name="download_cancel">取消下载</string>
+    <string name="download_retry">重试</string>
+    <string name="download_pause">暂停</string>
+    <string name="download_resume">继续下载</string>
+
     <!-- Timer -->
     <string name="timer_5">5 分钟</string>
     <string name="timer_15">15 分钟</string>

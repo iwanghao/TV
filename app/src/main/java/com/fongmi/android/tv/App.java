@@ -83,6 +83,28 @@ public class App extends Application implements Application.ActivityLifecycleCal
         super.onCreate();
         Notify.createChannel();
         registerActivityLifecycleCallbacks(this);
+        installCrashLog();
+    }
+
+    /**
+     * 把未捕获异常写到 files/crash.log，便于排查闪退（配合 CustomActivityOnCrash 使用）。
+     */
+    private void installCrashLog() {
+        final Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            try {
+                java.io.File file = new java.io.File(getFilesDir(), "crash.log");
+                try (java.io.FileWriter writer = new java.io.FileWriter(file, true)) {
+                    writer.write("==== " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(new java.util.Date()) + " ====\n");
+                    java.io.StringWriter sw = new java.io.StringWriter();
+                    throwable.printStackTrace(new java.io.PrintWriter(sw));
+                    writer.write(sw.toString());
+                    writer.write("\n");
+                }
+            } catch (Exception ignored) {
+            }
+            if (defaultHandler != null) defaultHandler.uncaughtException(thread, throwable);
+        });
     }
 
     @Override

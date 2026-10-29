@@ -49,6 +49,76 @@ public class VodPlaybackController {
         else if (!state.isDetailRequested(host.getVodKey(), id)) requestDetail();
     }
 
+    /**
+     * 离线播放本地文件：不联网，用 Download 记录里的信息还原详情页（剧名/线路/集数），
+     * 然后直接播放本地文件。返回 true 表示已走离线路径。
+     */
+    private boolean startLocalPlayback() {
+        String path = host.getLocalFile();
+        if (path == null || path.isEmpty() || !new java.io.File(path).exists()) return false;
+        try {
+            // 用 host 提供的剧名/线路/集数构造一个合成 Vod + Flag，渲染详情页。
+            String name = host.getVodName();
+            if (name == null || name.isEmpty()) name = "离线播放";
+            Vod vod = new Vod();
+            vod.setName(name);
+            vod.setId(host.getVodId());
+            Flag flag = Flag.create(host.getVodMark());
+
+            // 查出同一剧、同一站源、同一线路下所有已下载完成的集，全部列进选集。
+            int cid = host.getCid();
+            String flagName = flag.getFlag();
+            String targetUrl = host.getEpisodeUrl();
+            Episode target = null;
+            java.util.List<com.fongmi.android.tv.bean.Download> downloads = com.fongmi.android.tv.bean.Download.find(cid, host.getVodKey(), flagName);
+            // 先收集已下载集，再按集数自然排序（第1集→第10集），避免依赖数据库存储顺序导致乱序。
+            java.util.List<Episode> downloaded = new java.util.ArrayList<>();
+            for (com.fongmi.android.tv.bean.Download d : downloads) {
+                if (!d.isDone()) continue;
+                Episode ep = Episode.create(d.getEpisodeName(), d.getEpisodeUrl());
+                downloaded.add(ep);
+                if (target == null && d.getEpisodeUrl().equals(targetUrl)) target = ep;
+            }
+            downloaded.sort((a, b) -> {
+                int na = a.getNumber();
+                int nb = b.getNumber();
+                if (na != nb) return Integer.compare(na, nb);
+                return a.getName().compareToIgnoreCase(b.getName());
+            });
+            flag.getEpisodes().addAll(downloaded);
+            // 兜底：若没匹配到目标集，用 host 提供的集名构造一个。
+            if (target == null) {
+                String episodeName = host.getEpisodeName();
+                if (episodeName == null || episodeName.isEmpty()) episodeName = "第 1 集";
+                String episodeUrl = targetUrl == null || targetUrl.isEmpty() ? host.getVodId() : targetUrl;
+                target = Episode.create(episodeName, episodeUrl);
+                flag.getEpisodes().add(target);
+            }
+            vod.getFlags().add(flag);
+
+            // 渲染详情页（剧名 + 线路 + 全部已下载集数），复用正常详情页布局。
+            History history = historyPolicy.findOrCreate(host.getHistoryKey(), host.getVodMark(), vod);
+            state.setFlags(vod.getFlags());
+            state.setHistory(history);
+            lastHistory = history;
+            host.renderDetail(vod, history);
+            host.renderFlags(vod.getFlags());
+            host.renderHistory(history);
+            host.renderEpisodes(flag.getEpisodes());
+            host.renderEpisodeSelection(target);
+
+            // 直接播放目标集的本地文件。
+            Result result = new Result();
+            result.setUrl("file://" + path);
+            result.setFlag(flag.getFlag());
+            result.setParse(0);
+            applyPlaybackResult(result, VodPlayRequest.create(host.getVodKey(), flag, target));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private String resolveVodId() {
         String id = host.getVodId();
         if (!id.startsWith(PUSH_PREFIX)) return id;
@@ -152,6 +222,17 @@ public class VodPlaybackController {
         selectFlag(item, false);
     }
 
+    /**
+     * 当前线路，供下载面板按线路取集数。
+     */
+    public Flag getCurrentFlag() {
+        return state.hasFlags() ? state.getFlag() : null;
+    }
+
+    public History getCurrentHistory() {
+        return state.getHistory();
+    }
+
     private void selectFlag(Flag item, boolean force) {
         if (!state.hasFlags()) return;
         Flag selected = resolveFlag(item);
@@ -176,10 +257,41 @@ public class VodPlaybackController {
     }
 
     private void playEpisode(Episode item) {
+        // 优先匹配本地离线文件：命中则直接用本地文件播放，保持详情页布局（剧名/线路/集数）不变，做到无感。
+        Result local = resolveLocalResult(item);
+        if (local != null) {
+            applyPlaybackResult(local, VodPlayRequest.create(host.getVodKey(), state.getFlag(), item));
+            return;
+        }
         Result result = preloader.consume(item);
         host.stopPlaybackForRefresh();
         if (result == null) requestSelectedEpisode();
         else applyPlaybackResult(result, VodPlayRequest.create(host.getVodKey(), state.getFlag(), item));
+    }
+
+    /**
+     * 按 站源/线路/集数 匹配本地已下载文件，命中则构造一个指向本地文件的 Result。
+     */
+    private Result resolveLocalResult(Episode item) {
+        try {
+            if (item == null) return null;
+            History history = state.getHistory();
+            if (history == null) return null;
+            Flag flag = state.getFlag();
+            if (flag == null) return null;
+            com.fongmi.android.tv.bean.Download download = com.fongmi.android.tv.bean.Download.find(history.getCid(), host.getVodKey(), flag.getFlag(), item.getUrl());
+            if (download == null || !download.isDone()) return null;
+            String path = download.getDataSource();
+            if (path == null || path.isEmpty() || !new java.io.File(path).exists()) return null;
+            Result result = new Result();
+            result.setUrl("file://" + path);
+            result.setFlag(flag.getFlag());
+            result.setParse(0);
+            result.setHeader(download.headerMap());
+            return result;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public void selectQuality(Result result) {
@@ -362,6 +474,8 @@ public class VodPlaybackController {
             host.finishVod();
             return;
         }
+        // 联网查不到详情时，回退用本地缓存的下载记录还原详情页并播放本地文件。
+        if (startLocalPlayback()) return;
         String name = host.getVodName();
         if (name.isEmpty()) {
             host.renderEmptyDetail();

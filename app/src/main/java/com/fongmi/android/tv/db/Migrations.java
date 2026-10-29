@@ -49,4 +49,35 @@ public class Migrations {
             database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_Track_key_type` ON `Track` (`key`, `type`)");
         }
     };
+
+    public static final Migration MIGRATION_35_36 = new Migration(35, 36) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS Download (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `cid` INTEGER NOT NULL, `vodKey` TEXT, `vodName` TEXT, `flag` TEXT, `episodeName` TEXT, `episodeUrl` TEXT, `dataSource` TEXT, `header` TEXT, `status` INTEGER NOT NULL, `bytes` INTEGER NOT NULL, `total` INTEGER NOT NULL, `createTime` INTEGER NOT NULL)");
+            database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_Download_cid_vodKey_flag_episodeUrl` ON `Download` (`cid`, `vodKey`, `flag`, `episodeUrl`)");
+        }
+    };
+
+    public static final Migration MIGRATION_36_37 = new Migration(36, 37) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("DROP TABLE IF EXISTS Download");
+            database.execSQL("CREATE TABLE IF NOT EXISTS Download (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `cid` INTEGER NOT NULL, `vodKey` TEXT, `vodName` TEXT, `flag` TEXT, `episodeName` TEXT, `episodeUrl` TEXT, `dataSource` TEXT, `header` TEXT, `status` INTEGER NOT NULL, `bytes` INTEGER NOT NULL, `total` INTEGER NOT NULL, `createTime` INTEGER NOT NULL)");
+            database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_Download_cid_vodKey_flag_episodeUrl` ON `Download` (`cid`, `vodKey`, `flag`, `episodeUrl`)");
+        }
+    };
+
+    public static final Migration MIGRATION_37_38 = new Migration(37, 38) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE Download ADD COLUMN siteName TEXT DEFAULT NULL");
+        }
+    };
+
+    public static final Migration MIGRATION_38_39 = new Migration(38, 39) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE Download ADD COLUMN vodId TEXT DEFAULT NULL");
+        }
+    };
 }

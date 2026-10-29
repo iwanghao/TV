@@ -57,6 +57,7 @@ import com.fongmi.android.tv.bean.Sub;
 import com.fongmi.android.tv.bean.Vod;
 import com.fongmi.android.tv.databinding.ActivityVideoBinding;
 import com.fongmi.android.tv.db.AppDatabase;
+import com.fongmi.android.tv.download.DownloadManager;
 import com.fongmi.android.tv.event.CastEvent;
 import com.fongmi.android.tv.event.RefreshEvent;
 import com.fongmi.android.tv.impl.CustomTarget;
@@ -88,6 +89,7 @@ import com.fongmi.android.tv.ui.dialog.CastDialog;
 import com.fongmi.android.tv.ui.dialog.ChapterDialog;
 import com.fongmi.android.tv.ui.dialog.ControlDialog;
 import com.fongmi.android.tv.ui.dialog.DanmakuDialog;
+import com.fongmi.android.tv.ui.dialog.DownloadGridDialog;
 import com.fongmi.android.tv.ui.dialog.EditionDialog;
 import com.fongmi.android.tv.ui.dialog.EpisodeGridDialog;
 import com.fongmi.android.tv.ui.dialog.EpisodeListDialog;
@@ -102,6 +104,7 @@ import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.FileUtil;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.Notify;
+import com.fongmi.android.tv.utils.NetworkUtil;
 import com.fongmi.android.tv.utils.PiP;
 import com.fongmi.android.tv.utils.ResUtil;
 import com.fongmi.android.tv.utils.Sniffer;
@@ -134,6 +137,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private Runnable mR3;
     private Runnable mR4;
     private History mHistory;
+    private Episode mCurrentEpisode;
     private boolean fullscreen;
     private boolean useParse;
     private boolean rotate;
@@ -184,6 +188,25 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         activity.startActivity(intent);
     }
 
+    /**
+     * 从下载列表点播：启动详情页并定位到目标集数，进入后播放器优先读本地离线文件。
+     * localFile 为本地文件绝对路径（非空时跳过联网详情加载，直接离线播放）。
+     */
+    public static void start(Activity activity, String key, String id, String name, String pic, String mark, String flag, String episodeUrl, String episodeName, String localFile, int cid) {
+        Intent intent = new Intent(activity, VideoActivity.class);
+        intent.putExtra("name", name);
+        intent.putExtra("key", key);
+        intent.putExtra("id", id);
+        intent.putExtra("mark", flag);
+        intent.putExtra("flag", flag);
+        intent.putExtra("episodeUrl", episodeUrl);
+        intent.putExtra("episodeName", episodeName);
+        intent.putExtra("localFile", localFile);
+        intent.putExtra("cid", cid);
+        putPic(intent, pic);
+        activity.startActivity(intent);
+    }
+
     private static void putPic(Intent intent, String pic) {
         intent.removeExtra("pic");
         pic = ImgUtil.cache(pic);
@@ -200,6 +223,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private String getMark() {
         return Objects.toString(getIntent().getStringExtra("mark"), "");
+    }
+
+    private String getLocalFilePath() {
+        return Objects.toString(getIntent().getStringExtra("localFile"), "");
+    }
+
+    private String getEpisodeNameExtra() {
+        return Objects.toString(getIntent().getStringExtra("episodeName"), "");
     }
 
     private String getKey() {
@@ -355,6 +386,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.action.edition.setOnClickListener(view -> onEdition());
         mBinding.control.action.chapter.setOnClickListener(view -> onChapter());
         mBinding.control.action.episodes.setOnClickListener(view -> onEpisodes());
+        mBinding.download.setOnClickListener(view -> onDownload());
         mBinding.control.action.speed.setOnLongClickListener(view -> onSpeedLong());
         mBinding.control.action.ending.setOnLongClickListener(view -> onEndingReset());
         mBinding.control.action.opening.setOnLongClickListener(view -> onOpeningReset());
@@ -469,6 +501,28 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     public String getVodMark() {
         return getMark();
+    }
+
+    @Override
+    public String getLocalFile() {
+        return getLocalFilePath();
+    }
+
+    @Override
+    public String getEpisodeName() {
+        return getEpisodeNameExtra();
+    }
+
+    @Override
+    public String getEpisodeUrl() {
+        return Objects.toString(getIntent().getStringExtra("episodeUrl"), "");
+    }
+
+    @Override
+    public int getCid() {
+        int cid = getIntent().getIntExtra("cid", -1);
+        if (cid >= 0) return cid;
+        return mHistory == null ? VodConfig.getCid() : mHistory.getCid();
     }
 
     @Override
@@ -632,6 +686,25 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     public void renderEpisodes(List<Episode> items) {
         setEpisodeAdapter(items);
+        locateTargetEpisode();
+    }
+
+    private boolean targetEpisodeConsumed;
+
+    private void locateTargetEpisode() {
+        if (targetEpisodeConsumed) return;
+        String url = getIntent().getStringExtra("episodeUrl");
+        if (url == null || url.isEmpty()) {
+            targetEpisodeConsumed = true;
+            return;
+        }
+        targetEpisodeConsumed = true;
+        for (Episode episode : mEpisodeAdapter.getItems()) {
+            if (url.equals(episode.getUrl())) {
+                mVod.selectEpisode(episode);
+                return;
+            }
+        }
     }
 
     @Override
@@ -640,8 +713,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         scrollToPosition(mBinding.flag, mFlagAdapter.getPosition());
     }
 
+    /**
+     * 只在有剧集且当前线路可下载时显示下载入口。
+     */
+    private void setDownloadVisible(List<Episode> items) {
+        boolean visible = !items.isEmpty() && !isLivePlayback();
+        mBinding.download.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
     @Override
     public void renderEpisodeSelection(Episode item) {
+        mCurrentEpisode = item;
         notifyItemChanged(mBinding.episode, mEpisodeAdapter);
         scrollToPosition(mBinding.episode, mEpisodeAdapter.getPosition());
     }
@@ -821,7 +903,38 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     public void onItemClick(Episode item) {
         if (shouldEnterFullscreen(item)) return;
+        if (!canPlayEpisode(item)) return;
+        // 本地离线匹配已下沉到 VodPlaybackController.playEpisode，这里直接走正常选集流程，保证无感。
         mVod.selectEpisode(item);
+    }
+
+    /**
+     * 无网络时，没下载过的集直接给出明确提示，避免播放器抛一堆网络错误。
+     */
+    private boolean canPlayEpisode(Episode item) {
+        if (NetworkUtil.isAvailable()) return true;
+        if (isEpisodeDownloaded(item)) return true;
+        Notify.show(R.string.download_offline_missing);
+        return false;
+    }
+
+    private boolean isEpisodeDownloaded(Episode item) {
+        if (item == null || mHistory == null) return false;
+        Flag flag = mVod == null ? null : mVod.getCurrentFlag();
+        if (flag == null) return false;
+        return DownloadManager.get().isDownloaded(mHistory.getCid(), getVodKey(), flag.getFlag(), item.getUrl());
+    }
+
+    /**
+     * 已下载的集播失败（多半是缓存被 LRU 淘汰），回退为未下载并提示重新下载。
+     */
+    private void checkDownloadLost(Episode item, String msg) {
+        if (item == null || mHistory == null) return;
+        Flag flag = mVod == null ? null : mVod.getCurrentFlag();
+        if (flag == null) return;
+        if (!DownloadManager.get().isDownloaded(mHistory.getCid(), getVodKey(), flag.getFlag(), item.getUrl())) return;
+        DownloadManager.get().invalidate(mHistory.getCid(), getVodKey(), flag.getFlag(), item.getUrl());
+        Notify.show(getString(R.string.download_cache_lost, item.getName()));
     }
 
     @Override
@@ -842,6 +955,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.episode.setVisibility(items.isEmpty() ? View.GONE : View.VISIBLE);
         mBinding.more.setVisibility(items.size() < 10 ? View.GONE : View.VISIBLE);
         mEpisodeAdapter.addAll(items);
+        setDownloadVisible(items);
     }
 
     private void setQualityVisible(boolean visible) {
@@ -1062,6 +1176,17 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void onEpisodes() {
         EpisodeListDialog.create().episodes(mEpisodeAdapter.getItems()).show(this);
+    }
+
+    private void onDownload() {
+        if (mVod == null || mEpisodeAdapter == null || mEpisodeAdapter.isEmpty() || mHistory == null) return;
+        Flag flag = mVod.getCurrentFlag();
+        if (flag == null) return;
+        DownloadGridDialog.create()
+                .vod(mHistory.getCid(), getVodKey(), getVodId(), getVodName(), flag.getFlag())
+                .episodes(mEpisodeAdapter.getItems())
+                .show(this);
+        hideControl();
     }
 
     private void onPlayer() {
@@ -1323,6 +1448,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     @Override
     protected void onError(String msg) {
+        checkDownloadLost(mCurrentEpisode, msg);
         mVod.playbackError(msg);
     }
 
