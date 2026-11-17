@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.fongmi.android.tv",
+  "applicationId": "com.haoiyu.android.tv",
   "variantName": "leanbackRelease",
   "elements": [
     {
@@ -16,8 +16,8 @@
         }
       ],
       "attributes": [],
-      "versionCode": 571,
-      "versionName": "5.7.1",
+      "versionCode": 572,
+      "versionName": "5.7.2",
       "outputFile": "leanback-armeabi_v7a.apk"
     },
     {
@@ -29,8 +29,8 @@
         }
       ],
       "attributes": [],
-      "versionCode": 571,
-      "versionName": "5.7.1",
+      "versionCode": 572,
+      "versionName": "5.7.2",
       "outputFile": "leanback-arm64_v8a.apk"
     }
   ],
