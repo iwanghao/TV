@@ -3,6 +3,10 @@
 -keep class com.fongmi.quickjs.method.** { *; }
 -keep class com.fongmi.android.tv.bean.** { *; }
 
+# 签名校验：常量需可被直接读取，避免字符串混淆/内联导致启动早期取到错误值
+# -keep 已同时禁止 shrink / optimize / obfuscate，无需再加 -dontoptimize
+-keep class com.fongmi.android.tv.utils.SignatureGuard { *; }
+
 # Gson
 -keep class com.google.gson.** { *; }
 

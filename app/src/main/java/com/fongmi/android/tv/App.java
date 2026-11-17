@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.core.os.HandlerCompat;
 
 import com.fongmi.android.tv.utils.Notify;
+import com.fongmi.android.tv.utils.SignatureGuard;
 import com.fongmi.hook.Hook;
 import com.github.catvod.Init;
 import com.google.gson.Gson;
@@ -75,6 +76,9 @@ public class App extends Application implements Application.ActivityLifecycleCal
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
+        // 签名校验必须是启动流程的第一件事：早于 Init.set、Provider 初始化与任何业务代码，
+        // 保证被二次签名的包在产生任何副作用之前就退出。
+        if (!SignatureGuard.verify(base)) SignatureGuard.kill();
         Init.set(base);
     }
 

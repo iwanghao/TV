@@ -10,6 +10,12 @@ rootProject.file('local.properties').withInputStream {
     localProps.load(it)
 }
 
+// 唯一合法的打包证书：D:\密钥\haoiyu1.keystore（别名 haoiyu）。
+// 证书指纹与 SignatureGuard.EXPECTED_SHA256 必须保持一致，否则装的包会被运行时校验拒绝。
+def KEYSTORE_NAME = 'haoiyu1.keystore'
+def KEYSTORE_ALIAS = 'haoiyu'
+def KEYSTORE_SHA256 = 'd2f569ec0d8facb3d2996161a1699adf8df92d063c945be27388de48795265f0'
+
 android {
     namespace = 'com.fongmi.android.tv'
 
@@ -46,19 +52,49 @@ android {
 
     signingConfigs {
         release {
-            if (localProps['storeFile'] != null && localProps['keyAlias'] != null && localProps['storePassword'] != null) {
-                storeFile file(localProps['storeFile'])
-                keyAlias localProps['keyAlias']
-                keyPassword localProps['storePassword']
-                storePassword localProps['storePassword']
-            } else {
-                // 本地未配置签名时回退到 debug 签名，保证 release 变体可构建。
-                // AbiApkPackaging 的 FinalizeApksTask 会直接读取本配置执行 zipalign + apksigner，
-                // 属性留空会导致任务校验失败（Value not set）。
-                storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
-                storePassword 'android'
+            // release 只允许使用 haoiyu1.keystore 签名，与运行时 SignatureGuard 的校验基准一致。
+            // 缺少任何一项直接中断构建：静默回退 debug 会产出"看起来正常、实际证书不对"的包，
+            // 且 AbiApkPackaging 的 FinalizeApksTask 会读取本配置二次签名，兜底值会覆盖向导里选的证书。
+            def required = ['storeFile', 'keyAlias', 'storePassword']
+            def missing = required.findAll { localProps[it] == null || localProps[it].toString().trim().isEmpty() }
+            if (!missing.isEmpty()) {
+                throw new GradleException(
+                        "缺少签名配置：${missing.join(', ')}。\n" +
+                        "请在 local.properties 中补全后再构建 release，例如：\n" +
+                        "  storeFile=<keystore 绝对路径，中文需写成 \\\\uXXXX 转义>\n" +
+                        "  keyAlias=<别名>\n" +
+                        "  storePassword=<口令>\n" +
+                        "（本项目禁止回退 debug 签名）")
+            }
+            storeFile file(localProps['storeFile'])
+            keyAlias localProps['keyAlias']
+            keyPassword localProps['storePassword']
+            storePassword localProps['storePassword']
+
+            // 校验指向的确实是 haoiyu1.keystore，防止"随便换一个 keystore 也能过"。
+            // 只需文件可读即可比对指纹，不涉及私钥。
+            def ks = file(localProps['storeFile'])
+            if (!ks.exists()) {
+                throw new GradleException("签名证书不存在：${ks.absolutePath}")
+            }
+            if (ks.name != KEYSTORE_NAME) {
+                throw new GradleException("禁止使用其他证书打包：当前为 ${ks.name}，只允许 ${KEYSTORE_NAME}")
+            }
+            if (localProps['keyAlias'].toString().trim() != KEYSTORE_ALIAS) {
+                throw new GradleException("keyAlias 必须为 ${KEYSTORE_ALIAS}，当前为 ${localProps['keyAlias']}")
+            }
+            def actualSha256 = new java.io.FileInputStream(ks).withCloseable { input ->
+                def store = java.security.KeyStore.getInstance(ks.name.endsWith('.jks') ? 'JKS' : 'PKCS12')
+                store.load(input, localProps['storePassword'].toString().toCharArray())
+                def cert = store.getCertificate(localProps['keyAlias'].toString().trim())
+                if (cert == null) throw new GradleException("证书别名不存在：${localProps['keyAlias']}")
+                def digest = java.security.MessageDigest.getInstance('SHA-256').digest(cert.encoded)
+                digest.collect { String.format('%02x', it) }.join()
+            }
+            if (actualSha256 != KEYSTORE_SHA256) {
+                throw new GradleException(
+                        "签名证书指纹不匹配：\n  期望 ${KEYSTORE_SHA256}\n  实际 ${actualSha256}\n" +
+                        "该证书与运行时 SignatureGuard 的校验基准不一致，打出的包会闪退。")
             }
         }
     }
