@@ -17,6 +17,12 @@ public class PlayerSetting {
     private static final int MIN_BACKGROUND = 0;
     private static final int MAX_BACKGROUND = 2;
 
+    public static void migrateDefaults() {
+        if (Prefers.getBoolean("player_defaults_migrated")) return;
+        Prefers.put("buffer", 4);
+        Prefers.put("player_defaults_migrated", true);
+    }
+
     public static int getEngine() {
         return Math.clamp(Prefers.getInt("player_engine", ENGINE_EXO), ENGINE_EXO, ENGINE_MPV);
     }
@@ -104,7 +110,7 @@ public class PlayerSetting {
     }
 
     public static int getBuffer() {
-        return Math.clamp(Prefers.getInt("buffer"), MIN_BUFFER, MAX_BUFFER);
+        return Math.clamp(Prefers.getInt("buffer", 4), MIN_BUFFER, MAX_BUFFER);
     }
 
     public static void putBuffer(int buffer) {

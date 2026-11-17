@@ -6,6 +6,13 @@ import com.github.catvod.utils.Prefers;
 
 public class DecodeSetting {
 
+    public static void migrateDefaults() {
+        if (Prefers.getBoolean("decode_defaults_migrated")) return;
+        Prefers.put("decode_tunnel", true);
+        Prefers.put("decode_prefer_aac", true);
+        Prefers.put("decode_defaults_migrated", true);
+    }
+
     public static boolean isAudioPassThrough() {
         return Prefers.getBoolean("decode_audio_pass_through", Prefers.getBoolean("audio_pass_through", true));
     }
@@ -40,7 +47,7 @@ public class DecodeSetting {
     }
 
     public static boolean isPreferAAC() {
-        return Prefers.getBoolean("decode_prefer_aac", Prefers.getBoolean("prefer_aac"));
+        return Prefers.getBoolean("decode_prefer_aac", Prefers.getBoolean("prefer_aac", true));
     }
 
     public static void putPreferAAC(boolean preferAAC) {
@@ -48,7 +55,7 @@ public class DecodeSetting {
     }
 
     public static boolean isTunnel() {
-        return Prefers.getBoolean("decode_tunnel", Prefers.getBoolean("tunnel"));
+        return Prefers.getBoolean("decode_tunnel", Prefers.getBoolean("tunnel", true));
     }
 
     public static void putTunnel(boolean tunnel) {
