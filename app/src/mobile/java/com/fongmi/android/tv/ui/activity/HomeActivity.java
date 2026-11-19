@@ -36,12 +36,14 @@ import com.fongmi.android.tv.server.Server;
 import com.fongmi.android.tv.service.PlaybackService;
 import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.FragmentStateManager;
+import com.fongmi.android.tv.ui.dialog.NoticeDialog;
 import com.fongmi.android.tv.ui.fragment.SettingDanmakuFragment;
 import com.fongmi.android.tv.ui.fragment.SettingDecodeFragment;
 import com.fongmi.android.tv.ui.fragment.SettingFragment;
 import com.fongmi.android.tv.ui.fragment.SettingPlayerFragment;
 import com.fongmi.android.tv.ui.fragment.SettingPreloadFragment;
 import com.fongmi.android.tv.ui.fragment.VodFragment;
+import com.fongmi.android.tv.utils.DeviceGuard;
 import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.Notify;
 import com.fongmi.android.tv.utils.PermissionUtil;
@@ -83,6 +85,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
         PermissionUtil.requestNotify(this);
         initFragment(savedInstanceState);
         Updater.create().start(this);
+        checkDevice();
         initConfig();
     }
 
@@ -125,6 +128,59 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
 
     private void initConfig() {
         RemoteConfig.init(getCallback());
+    }
+
+    /**
+     * 静默上报设备信息。服务端判定禁止使用时，直接结束当前界面。
+     * <p>
+     * 不等待结果：上报在后台线程进行，网络慢或断网都不会拖住首页，
+     * 断网时 report 内部静默放行。
+     */
+    private void checkDevice() {
+        DeviceGuard.setListener(this::showNotice);
+        DeviceGuard.report(new Callback() {
+            @Override
+            public void error(String msg) {
+                if (isFinishing() || isDestroyed()) return;
+                NoticeDialog.create()
+                        .title("无法使用")
+                        .desc(msg)
+                        .confirmText("退出")
+                        .onConfirm(HomeActivity.this::finishAffinity)
+                        .show(HomeActivity.this);
+            }
+        });
+    }
+
+    /**
+     * 服务端下发的提醒（更新、试用剩余天数、单设备自定义提醒）。
+     * <p>
+     * 用 Toast 轻提示而不是弹窗：不打断用户、不依赖 FragmentManager 的事务时机。
+     * <p>
+     * 关键点：上报常在首帧绘制之前就返回，此时直接 show 会被启动图盖住，用户根本看不到。
+     * 这里用 {@link View#postOnAnimation} 逐帧等待，直到首页真正绘制完成（{@code isShown()}），
+     * 再延后一拍显示，比固定 sleep 多少秒可靠。
+     */
+    private void showNotice(DeviceGuard.Notice notice) {
+        if (isFinishing() || isDestroyed()) return;
+        String text = notice.title + "：" + notice.desc;
+        awaitDrawn(getWindow().getDecorView(), text, 0);
+    }
+
+    /** 每帧检查一次，最多等 10 秒（约 600 帧），避免异常情况下无限等待。 */
+    private void awaitDrawn(View decor, String text, int frame) {
+        if (isFinishing() || isDestroyed()) return;
+        boolean ready = decor.isShown() && decor.getWidth() > 0 && decor.getHeight() > 0;
+        if (!ready && frame < 600) {
+            decor.postOnAnimation(() -> awaitDrawn(decor, text, frame + 1));
+            return;
+        }
+        if (!ready) return;
+        // 已绘制，再等一小会儿让动画稳定，避免 Toast 被转场盖住
+        decor.postDelayed(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            Notify.show(text);
+        }, 600);
     }
 
     private Callback getCallback() {

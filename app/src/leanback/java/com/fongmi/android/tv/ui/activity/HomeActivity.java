@@ -53,6 +53,7 @@ import com.fongmi.android.tv.ui.base.BaseActivity;
 import com.fongmi.android.tv.ui.custom.CustomRowPresenter;
 import com.fongmi.android.tv.ui.custom.CustomSelector;
 import com.fongmi.android.tv.ui.custom.CustomTitleView;
+import com.fongmi.android.tv.ui.dialog.NoticeDialog;
 import com.fongmi.android.tv.ui.dialog.SiteDialog;
 import com.fongmi.android.tv.ui.presenter.FuncPresenter;
 import com.fongmi.android.tv.ui.presenter.HeaderPresenter;
@@ -60,6 +61,7 @@ import com.fongmi.android.tv.ui.presenter.HistoryPresenter;
 import com.fongmi.android.tv.ui.presenter.ProgressPresenter;
 import com.fongmi.android.tv.ui.presenter.VodPresenter;
 import com.fongmi.android.tv.utils.Clock;
+import com.fongmi.android.tv.utils.DeviceGuard;
 import com.fongmi.android.tv.utils.FileChooser;
 import com.fongmi.android.tv.utils.ImgUtil;
 import com.fongmi.android.tv.utils.KeyUtil;
@@ -127,6 +129,7 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
         setViewModel();
         setAdapter();
         initConfig();
+        checkDevice();
         setTitle();
         setLogo();
     }
@@ -199,6 +202,60 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
 
     private void initConfig() {
         RemoteConfig.init(getCallback());
+    }
+
+    /**
+     * 静默上报设备信息。服务端判定禁止使用时，直接退出首页。
+     * <p>
+     * 不等待结果：上报在后台线程进行，网络慢或断网都不会拖住首屏，
+     * 断网时 report 内部静默放行。
+     */
+    private void checkDevice() {
+        DeviceGuard.setListener(this::showNotice);
+        DeviceGuard.report(new Callback() {
+            @Override
+            public void error(String msg) {
+                if (getActivity().isFinishing() || getActivity().isDestroyed()) return;
+                NoticeDialog.create()
+                        .title("无法使用")
+                        .desc(msg)
+                        .confirmText("退出")
+                        .onConfirm(HomeActivity.this::finishAffinity)
+                        .show(getActivity());
+            }
+        });
+    }
+
+    /**
+     * 服务端下发的提醒（更新、试用剩余天数等）。
+     * <p>
+     * 用 Toast 轻提示而不是弹窗：不打断观看、不依赖 FragmentManager 的事务时机
+     * （网络回包常常早于 onStart，弹窗会被系统丢弃），且不会抢走遥控器焦点。
+     */
+    private void showNotice(DeviceGuard.Notice notice) {
+        if (getActivity().isFinishing() || getActivity().isDestroyed()) return;
+        String text = notice.title + "：" + notice.desc;
+        awaitDrawn(getActivity().getWindow().getDecorView(), text, 0);
+    }
+
+    /**
+     * 逐帧等待首页真正绘制完成后再弹 Toast。
+     * <p>
+     * 电视冷启动比手机慢得多，固定 sleep 很容易要么被启动图盖住、要么等太久。
+     * 这里用 postOnAnimation 按帧检查，最多等 15 秒（约 900 帧）。
+     */
+    private void awaitDrawn(View decor, String text, int frame) {
+        if (getActivity().isFinishing() || getActivity().isDestroyed()) return;
+        boolean ready = decor.isShown() && decor.getWidth() > 0 && decor.getHeight() > 0;
+        if (!ready && frame < 900) {
+            decor.postOnAnimation(() -> awaitDrawn(decor, text, frame + 1));
+            return;
+        }
+        if (!ready) return;
+        decor.postDelayed(() -> {
+            if (getActivity().isFinishing() || getActivity().isDestroyed()) return;
+            Notify.show(text);
+        }, 600);
     }
 
     private Callback getCallback() {

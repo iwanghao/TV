@@ -25,8 +25,11 @@ android {
         applicationId "com.haoiyu.android.tv"
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdk libs.versions.targetSdk.get().toInteger()
-        versionCode 573
-        versionName "5.7.3"
+        versionCode 574
+        versionName "5.7.4"
+        // 设备上报服务地址。默认走内网穿透（frp）地址，保证任何网络环境下都能到达；
+        // 本地联调可用 -PdeviceApi=http://192.168.x.x:8081/api/device/report 覆盖，无需改代码。
+        buildConfigField "String", "DEVICE_API", "\"${project.findProperty('deviceApi') ?: 'https://3xui.haoiyu.cn:31000/api/device/report'}\""
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "eventBusIndex": "com.fongmi.android.tv.event.EventIndex"]

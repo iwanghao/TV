@@ -25,7 +25,7 @@ public class RemoteConfig {
 
     private static final String TAG = RemoteConfig.class.getSimpleName();
 
-    public static final String URL = "https://3xui.haoiyu.cn/d/onedrive/TvBox/update.json";
+    public static final String URL = "https://3xui.haoiyu.cn/d/%E6%9C%AC%E5%9C%B0%E5%AD%98%E5%82%A8/config/update.json";
 
     /** 首屏（缓存优先）加载已发起，此时才允许开始异步探测远端更新。 */
     private static volatile boolean booted;
