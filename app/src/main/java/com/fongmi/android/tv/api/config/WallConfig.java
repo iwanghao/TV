@@ -69,6 +69,7 @@ public class WallConfig extends BaseConfig {
 
     @Override
     protected void postEvent() {
+        if (!shouldPostEvent()) return;
         super.postEvent();
         ConfigEvent.wall();
     }

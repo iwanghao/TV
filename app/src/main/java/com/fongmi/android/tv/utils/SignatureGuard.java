@@ -7,6 +7,8 @@ import android.content.pm.Signature;
 import android.os.Build;
 import android.util.Log;
 
+import com.fongmi.android.tv.BuildConfig;
+
 import java.security.MessageDigest;
 import java.util.Locale;
 
@@ -29,10 +31,18 @@ public final class SignatureGuard {
 
     /**
      * 校验当前安装包的签名。
+     * <p>
+     * debug 构建直接放行：debug 包由系统 debug keystore 签名，指纹必然与基准不一致，
+     * 若照常校验会导致本地调试包一启动就被 kill，无法调试。
+     * release 构建的校验逻辑不变，仍然只接受基准证书签名的包。
      *
-     * @return true 表示签名与基准证书一致，可以继续运行；false 表示需立即终止
+     * @return true 表示允许继续运行；false 表示需立即终止
      */
     public static boolean verify(Context context) {
+        if (BuildConfig.DEBUG) {
+            Log.w(TAG, "debug build, skip signature check");
+            return true;
+        }
         byte[][] digests = collectDigests(context);
         if (digests.length == 0) {
             Log.e(TAG, "signature not found");

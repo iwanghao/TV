@@ -108,15 +108,42 @@ public class LiveConfig extends BaseConfig {
 
     @Override
     protected void postEvent() {
+        if (!shouldPostEvent()) return;
         super.postEvent();
         ConfigEvent.live();
     }
 
     @Override
     protected void load(Config config) throws Throwable {
-        String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+        // 强制回源时跳过缓存读取；失败会抛出异常，此时旧缓存依然完好可用。
+        String json = consumeForceReload() ? "" : cached(config);
+        if (TextUtils.isEmpty(json)) {
+            // 本地无缓存：只能走网络，拉取后写入缓存。
+            json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+            parse(config, json);
+            saveCache(json);
+            return;
+        }
+        // 命中缓存：直接用本地内容，启动阶段不发起网络请求。
+        parse(config, json);
+    }
+
+    private void parse(Config config, String json) throws Throwable {
         if (Json.isObj(json)) checkJson(config, Json.parse(json).getAsJsonObject());
         else parseText(config, json);
+    }
+
+    /** 读取与当前配置地址匹配的缓存内容；地址不一致说明缓存已失效。 */
+    private String cached(Config config) {
+        Config local = config == null ? null : Config.find(config.getUrl(), LIVE);
+        if (local == null || !config.getUrl().equals(local.getUrl())) return "";
+        return local.getJson();
+    }
+
+    private void saveCache(String json) {
+        if (this.config == null || TextUtils.isEmpty(this.config.getUrl())) return;
+        this.config.setJson(json);
+        this.config.save();
     }
 
     @Override

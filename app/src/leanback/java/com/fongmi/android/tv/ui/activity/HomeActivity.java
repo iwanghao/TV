@@ -206,12 +206,14 @@ public class HomeActivity extends BaseActivity implements CustomTitleView.Listen
             @Override
             public void success() {
                 showContent();
+                RemoteConfig.checkUpdate();
             }
 
             @Override
             public void error(String msg) {
                 Notify.show(msg);
                 showContent();
+                RemoteConfig.checkUpdate();
             }
         };
     }

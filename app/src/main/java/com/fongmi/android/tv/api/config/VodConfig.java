@@ -105,14 +105,41 @@ public class VodConfig extends BaseConfig {
 
     @Override
     protected void postEvent() {
+        if (!shouldPostEvent()) return;
         super.postEvent();
         ConfigEvent.vod();
     }
 
     @Override
     protected void load(Config config) throws Throwable {
-        String json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+        // 强制回源时跳过缓存读取；失败会抛出异常，此时旧缓存依然完好可用。
+        String json = consumeForceReload() ? "" : cached(config);
+        if (TextUtils.isEmpty(json)) {
+            // 本地无缓存（首次安装）或需要回源：走网络，拉取成功后写入缓存。
+            json = Decoder.getJson(UrlUtil.convert(config.getUrl()), TAG);
+            checkJson(config, Json.parse(json).getAsJsonObject());
+            saveCache(json);
+            return;
+        }
+        // 命中缓存：直接用本地内容渲染，启动阶段不发起网络请求。
+        // 远端是否有更新交给 RemoteConfig.checkUpdate 在后台延迟比对。
         checkJson(config, Json.parse(json).getAsJsonObject());
+    }
+
+    /**
+     * 读取与当前配置地址匹配的缓存内容；地址不一致说明缓存已失效。
+     */
+    private String cached(Config config) {
+        if (config == null || TextUtils.isEmpty(config.getUrl())) return "";
+        Config local = Config.find(config.getUrl(), VOD);
+        if (local == null || !config.getUrl().equals(local.getUrl())) return "";
+        return local.getJson() == null ? "" : local.getJson();
+    }
+
+    private void saveCache(String json) {
+        if (this.config == null || TextUtils.isEmpty(this.config.getUrl())) return;
+        this.config.setJson(json);
+        this.config.save();
     }
 
     @Override

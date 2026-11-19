@@ -132,6 +132,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
             @Override
             public void success() {
                 checkAction(getIntent());
+                RemoteConfig.checkUpdate();
             }
 
             @Override
@@ -139,6 +140,7 @@ public class HomeActivity extends BaseActivity implements NavigationBarView.OnIt
                 checkAction(getIntent());
                 StateEvent.empty();
                 Notify.show(msg);
+                RemoteConfig.checkUpdate();
             }
         };
     }

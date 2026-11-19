@@ -35,6 +35,10 @@ abstract class BaseConfig {
     protected boolean sync;
     protected volatile Config config;
     private volatile Future<?> future;
+    /** 静默重建：完成后不广播配置变更事件，避免刷新正在展示的界面。 */
+    private volatile boolean silent;
+    /** 强制回源：下一次重建跳过本地缓存读取。 */
+    private volatile boolean forceReload;
 
     protected abstract String getTag();
 
@@ -57,6 +61,40 @@ abstract class BaseConfig {
 
     protected void postEvent() {
         ConfigEvent.common();
+    }
+
+    /**
+     * 是否需要广播配置变更事件。
+     * <p>
+     * 子类的 postEvent 会叠加自己的事件（如 ConfigEvent.vod()），因此必须在子类里
+     * 也先问一次，否则静默重建仍然会刷新界面。
+     */
+    protected boolean shouldPostEvent() {
+        if (!silent) return true;
+        silent = false;
+        return false;
+    }
+
+    /** 标记下一次重建为静默模式（不广播配置变更事件）。 */
+    public void setSilent() {
+        this.silent = true;
+    }
+
+    /**
+     * 标记下一次重建必须回源（跳过本地缓存读取）。
+     * <p>
+     * 刻意不删除已有缓存：重建失败（断网、源失效）时旧缓存仍是用户唯一可用的内容，
+     * 清了就等于把可用数据弄丢。新内容拉取成功后才覆盖缓存。
+     */
+    public void setForceReload() {
+        this.forceReload = true;
+    }
+
+    /** 取出并复位"强制回源"标记。 */
+    protected boolean consumeForceReload() {
+        if (!forceReload) return false;
+        forceReload = false;
+        return true;
     }
 
     public boolean needSync(String url) {
